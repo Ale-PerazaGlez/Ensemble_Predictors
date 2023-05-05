@@ -1,0 +1,78 @@
+---
+title: "Task1-SL"
+author: "Alejandro Peraza, Miguel Benítez"
+format: html
+editor: visual
+---
+
+## Exploratory data analysis
+
+```{r}
+library(readr)
+library(dplyr)
+
+file <- '2022-2023 Football Player Stats.csv'
+df <- read_delim(file, delim = ";", locale = locale(decimal_mark = ".", grouping_mark = ",", encoding = "Windows-1252"),
+                     col_types = "ifffffiiiiidi")
+# str(df)
+# 
+# summary(df)
+```
+
+```{r}
+# Some players are repeated because they change position/team/league
+df[which(df$RecProg == max(df$RecProg)), ]
+
+
+length(df$Player)
+length(unique(df$Player))
+
+df %>% filter(Player == "Matthis Abline")
+df %>% filter(Player == "Naouirou Ahamada")
+```
+
+```{r}
+library(skimr)
+skim(df)
+```
+
+```{r}
+library(reshape2)
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+
+numeric_df <- dplyr::select(df, where(is.numeric))
+cormat <- round(cor(numeric_df),2)
+
+high_cor_idx <- apply(cormat, 1, 
+                 function(x) any(abs(x) > 0.85 & abs(x) < 1))
+corrplot(cor(numeric_df[, high_cor_idx]), type = "upper", method = "circle")
+
+```
+
+We have a lot of clusters of highly correlated variables, this was expected.
+
+```{r}
+# I'd say that we should remove the red cards a player have and maybe their fault
+df_ <- df %>% dplyr::select(-c(`2CrdY`, CrdR, Player, Fls))
+numeric_df <- dplyr::select(df_, where(is.numeric))
+
+#' Testing only with numeric variables for now. 
+#' Using factors end up making the plot way too cluttered
+
+#Create training set
+train <- numeric_df %>% sample_frac(.70)
+
+#Create test set
+test  <- anti_join(numeric_df, train, by = 'Rk')
+```
+
+```{r}
+library(rpart)
+library(rpart.plot)
+model1 <- rpart(CrdY ~., data = train)
+
+# plot(model1)
+rpart.plot(model1)
+```
